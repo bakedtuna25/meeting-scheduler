@@ -6,7 +6,7 @@ declare global {
   }
 }
 
-export const OAUTH_CLIENT_ID = '92433229587-llbavsdden1foj7ottli4k9on2fnakj7.apps.googleusercontent.com';
+export const OAUTH_CLIENT_ID = '964469019418-auop3kmkc9nuhj89er05op4tci6bbkc4.apps.googleusercontent.com';
 export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 const STORAGE_KEY_TOKEN = 'teamsync_gcal_token';
