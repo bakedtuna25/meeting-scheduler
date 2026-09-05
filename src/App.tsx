@@ -11,6 +11,9 @@ import {
   CalendarCheck,
   Search,
   Filter,
+  Settings,
+  Key,
+  AlertCircle,
 } from 'lucide-react';
 import { Meeting, Note, MeetingStatus } from './types';
 import { INITIAL_MEETINGS, INITIAL_NOTES } from './data/initialData';
@@ -20,6 +23,7 @@ import { AddNoteModal } from './components/AddNoteModal';
 import { ScheduleMeetingModal } from './components/ScheduleMeetingModal';
 import { MeetingDetailsModal } from './components/MeetingDetailsModal';
 import { NotificationBanner } from './components/NotificationBanner';
+import { OAuthOriginModal } from './components/OAuthOriginModal';
 import {
   getStoredToken,
   saveToken,
@@ -28,7 +32,9 @@ import {
   fetchGoogleCalendarEvents,
   createGoogleCalendarEvent,
   deleteGoogleCalendarEvent,
-  OAUTH_CLIENT_ID,
+  DEFAULT_AI_STUDIO_CLIENT_ID,
+  getActiveClientId,
+  setActiveClientId,
 } from './services/googleCalendar';
 import {
   playChimeSound,
@@ -76,6 +82,7 @@ export default function App() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [initialMeetingIdForNote, setInitialMeetingIdForNote] = useState<string | undefined>(undefined);
   const [selectedMeetingForDetails, setSelectedMeetingForDetails] = useState<Meeting | null>(null);
+  const [isOAuthModalOpen, setIsOAuthModalOpen] = useState(false);
 
   // Notification / Reminder permissions & triggers
   const [notificationPermissionGranted, setNotificationPermissionGranted] = useState(
@@ -172,17 +179,27 @@ export default function App() {
   }, [meetings]);
 
   // Connect Google Calendar flow
-  const handleConnectGoogleCalendar = () => {
+  const handleConnectGoogleCalendar = (customClientId?: string) => {
     setGcalError(null);
+    const clientIdToUse = customClientId || getActiveClientId();
+
     requestGoogleCalendarToken(
-      OAUTH_CLIENT_ID,
+      clientIdToUse,
       async (token) => {
         setGoogleToken(token);
         await syncEventsFromGoogle(token);
       },
       (err) => {
         console.error('Google OAuth error:', err);
-        setGcalError(err.message || 'Gagal menghubungkan Google Calendar.');
+        const errMsg = err.message || '';
+        if (errMsg.includes('origin_mismatch') || errMsg.includes('400')) {
+          setGcalError(
+            'Error 400: origin_mismatch — Domain aplikasi belum terdaftar di Authorized JavaScript origins Google Cloud Console untuk Client ID ini.'
+          );
+          setIsOAuthModalOpen(true);
+        } else {
+          setGcalError(errMsg || 'Gagal menghubungkan Google Calendar.');
+        }
       }
     );
   };
@@ -456,6 +473,15 @@ export default function App() {
               <Volume2 className="w-4 h-4" />
             </button>
 
+            {/* OAuth Client ID Settings */}
+            <button
+              onClick={() => setIsOAuthModalOpen(true)}
+              className="p-2 text-slate-500 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition-colors"
+              title="Pengaturan Google OAuth / Solusi Error 400"
+            >
+              <Key className="w-4 h-4" />
+            </button>
+
             {/* + Schedule Meeting Button */}
             <button
               id="btn-schedule-meeting"
@@ -472,11 +498,45 @@ export default function App() {
       {/* Error alert if any */}
       {gcalError && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-          <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2.5 rounded-xl text-xs flex items-center justify-between">
-            <span>{gcalError}</span>
-            <button onClick={() => setGcalError(null)} className="text-amber-700 font-bold ml-2">
-              ✕
-            </button>
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+              <div>
+                <span className="font-semibold text-slate-900">{gcalError}</span>
+                {(gcalError.includes('origin_mismatch') || gcalError.includes('400')) && (
+                  <p className="text-[11px] text-amber-800 mt-0.5">
+                    URL domain Cloud Run belum didaftarkan di Authorized JavaScript origins Google Cloud Console milik Client ID ini.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              {(gcalError.includes('origin_mismatch') || gcalError.includes('400')) && (
+                <>
+                  <button
+                    onClick={() => {
+                      setActiveClientId(DEFAULT_AI_STUDIO_CLIENT_ID);
+                      handleConnectGoogleCalendar(DEFAULT_AI_STUDIO_CLIENT_ID);
+                    }}
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] transition-colors shadow-2xs cursor-pointer"
+                  >
+                    Gunakan Client ID Siap Pakai
+                  </button>
+                  <button
+                    onClick={() => setIsOAuthModalOpen(true)}
+                    className="px-2.5 py-1 bg-amber-200/80 hover:bg-amber-300 text-amber-950 rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
+                  >
+                    Atur / Salin URL Origin
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setGcalError(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 font-bold ml-1"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -685,6 +745,13 @@ export default function App() {
         onUnlinkNote={(noteId) => handleReassignNoteMeeting(noteId, undefined)}
         onToggleStatus={handleToggleMeetingStatus}
         onDeleteMeeting={handleDeleteMeeting}
+      />
+
+      {/* Google OAuth Origin Mismatch & Client ID Config Modal */}
+      <OAuthOriginModal
+        isOpen={isOAuthModalOpen}
+        onClose={() => setIsOAuthModalOpen(false)}
+        onConnectWithId={(newClientId) => handleConnectGoogleCalendar(newClientId)}
       />
     </div>
   );

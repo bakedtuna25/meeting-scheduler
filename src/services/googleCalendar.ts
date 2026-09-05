@@ -1,4 +1,5 @@
 import { Meeting, MeetingAttendee } from '../types';
+import appletConfig from '../../firebase-applet-config.json';
 
 declare global {
   interface Window {
@@ -6,7 +7,28 @@ declare global {
   }
 }
 
-export const OAUTH_CLIENT_ID = '964469019418-auop3kmkc9nuhj89er05op4tci6bbkc4.apps.googleusercontent.com';
+export const DEFAULT_AI_STUDIO_CLIENT_ID =
+  '92433229587-llbavsdden1foj7ottli4k9on2fnakj7.apps.googleusercontent.com';
+
+export const USER_CUSTOM_CLIENT_ID =
+  '964469019418-auop3kmkc9nuhj89er05op4tci6bbkc4.apps.googleusercontent.com';
+
+const STORAGE_KEY_CUSTOM_CLIENT_ID = 'teamsync_active_client_id';
+
+export function getActiveClientId(): string {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_CUSTOM_CLIENT_ID);
+    if (saved) return saved;
+  } catch (e) {}
+  return appletConfig?.oAuthClientId || DEFAULT_AI_STUDIO_CLIENT_ID;
+}
+
+export function setActiveClientId(clientId: string) {
+  localStorage.setItem(STORAGE_KEY_CUSTOM_CLIENT_ID, clientId);
+}
+
+export const OAUTH_CLIENT_ID = getActiveClientId();
+
 export const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
 
 const STORAGE_KEY_TOKEN = 'teamsync_gcal_token';
@@ -45,7 +67,7 @@ export function clearStoredToken() {
 }
 
 export function requestGoogleCalendarToken(
-  clientId = OAUTH_CLIENT_ID,
+  clientId = getActiveClientId(),
   onSuccess: (token: string, expiresIn: number) => void,
   onError: (error: any) => void
 ) {
