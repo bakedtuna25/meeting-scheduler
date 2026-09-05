@@ -1,0 +1,6 @@
+{
+  "name": "Team Meeting & Notes Scheduler",
+  "description": "Jadwalkan meeting tim terintegrasi Google Calendar, pengingat otomatis, dan catatan meeting yang praktis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
