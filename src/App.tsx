@@ -181,7 +181,10 @@ export default function App() {
   // Connect Google Calendar flow
   const handleConnectGoogleCalendar = (customClientId?: string) => {
     setGcalError(null);
-    const clientIdToUse = customClientId || getActiveClientId();
+    const clientIdToUse =
+      typeof customClientId === 'string' && customClientId.trim().length > 0
+        ? customClientId.trim()
+        : getActiveClientId();
 
     requestGoogleCalendarToken(
       clientIdToUse,
@@ -191,7 +194,7 @@ export default function App() {
       },
       (err) => {
         console.error('Google OAuth error:', err);
-        const errMsg = err.message || '';
+        const errMsg = err?.message || String(err || '');
         if (errMsg.includes('origin_mismatch') || errMsg.includes('400')) {
           setGcalError(
             'Error 400: origin_mismatch — Domain aplikasi belum terdaftar di Authorized JavaScript origins Google Cloud Console untuk Client ID ini.'
@@ -433,7 +436,7 @@ export default function App() {
               </div>
             ) : (
               <button
-                onClick={handleConnectGoogleCalendar}
+                onClick={() => handleConnectGoogleCalendar()}
                 className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 transition-all shadow-2xs cursor-pointer"
                 title="Hubungkan akun Google Calendar Anda"
               >

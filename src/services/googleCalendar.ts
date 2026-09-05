@@ -67,18 +67,30 @@ export function clearStoredToken() {
 }
 
 export function requestGoogleCalendarToken(
-  clientId = getActiveClientId(),
-  onSuccess: (token: string, expiresIn: number) => void,
-  onError: (error: any) => void
+  clientId?: string,
+  onSuccess: (token: string, expiresIn: number) => void = () => {},
+  onError: (error: any) => void = () => {}
 ) {
   if (typeof window === 'undefined' || !window.google?.accounts?.oauth2) {
     onError(new Error('Google Identity Services library is not loaded yet. Please try again.'));
     return;
   }
 
+  // Ensure clientId is strictly a string and not an event object
+  let resolvedClientId = '';
+  if (typeof clientId === 'string' && clientId.trim().length > 0) {
+    resolvedClientId = clientId.trim();
+  } else {
+    resolvedClientId = getActiveClientId();
+  }
+
+  if (!resolvedClientId || typeof resolvedClientId !== 'string') {
+    resolvedClientId = DEFAULT_AI_STUDIO_CLIENT_ID;
+  }
+
   try {
     const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: clientId,
+      client_id: resolvedClientId,
       scope: CALENDAR_SCOPE,
       callback: (response: any) => {
         if (response.error) {
@@ -96,7 +108,7 @@ export function requestGoogleCalendarToken(
       },
     });
 
-    client.requestAccessToken({ prompt: '' });
+    client.requestAccessToken();
   } catch (err) {
     onError(err);
   }
